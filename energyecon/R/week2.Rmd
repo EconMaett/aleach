@@ -1,0 +1,67 @@
+---
+title: "R Markdown Example"
+author: "Andrew Leach"
+date: "`r format(Sys.time(), '%B, %Y')`"
+output: html_document
+editor: source
+---
+
+<!-- The date line above grabs the system time and converts it to a date for the title lines of your html document -->
+<!-- This is how you do comments in html for the markdown file itself -->
+
+```{r chunk_options,echo=F}
+#if you include this in your code, it will suppress warnings and messages in your output.
+# The echo=F option means that this chunk won't appear in your output
+# Inside a code chunk, use a leading # for comments
+knitr::opts_chunk$set(message=F,warning=F)
+```
+
+
+```{r prelims}
+#load the packages I need
+library(tidyverse)
+library(readxl) #to read spreadsheets
+library(janitor) #for clean_names
+library(scales) #clean axis labels and such
+```
+
+
+
+```{r download_data}
+#download my data
+download.file("https://www.eia.gov/dnav/pet/xls/PET_PRI_SPT_S1_D.xls",destfile = "eia_prices.xls",mode="wb")
+```
+
+
+```{r read_data}
+#reshape and prep the data
+price_data<- 
+  read_excel("eia_prices.xls" ,sheet = "Data 1",skip=2)%>%clean_names()%>%
+  rename(WTI=2,Brent=3)%>% #change the names of the second and third columns
+  mutate(date=as_date(date))%>% #make sure the date is read as a date
+  pivot_longer(-date,names_to = "crude_stream", values_to = "price")%>% #convert to a long-form data set
+  filter(!is.na(price))%>% #take out missing values. MAKE SURE YOU DO THIS AFTER YOU CONVERT TO LONG
+  filter(date>=max(date)-years(15)) #keep the last 15 years of data
+```
+
+```{r make_graph}
+#make the graph by passing the data to ggplot
+  ggplot(price_data)+ #make a graph
+  geom_line(aes(date,price,group=crude_stream,color=crude_stream),linewidth=.65)+
+  scale_x_date(date_labels = "%Y",date_breaks = "1 year", expand=c(0,0))+
+  scale_y_continuous(breaks=pretty_breaks(), expand=c(0,0))+
+  expand_limits(y=c(0,150))+
+  expand_limits(x=ymd("2024-3-31"))+
+  scale_color_manual("",values = c("dodgerblue","darkgreen"))+
+  theme_minimal()+
+  theme(legend.position = "bottom")+
+  guides(linetype = guide_legend(keywidth = unit(1.6,"cm"),nrow = 1))+
+  labs(y="Price ($/bbl)",x="",
+       title="Crude Oil Spot Prices",
+       subtitle = "Daily West Texas Intermediate (WTI) and Brent prices in dollars per barrel (2009-2024)",
+       caption = "Data via EIA, graph by Andrew Leach"
+  )+
+NULL #I often put these at the end of my graph code so I don't have to worry about the "+" at the end of an added line
+# this would let you save the graph to a file if you wanted to use this graph in a word doc, for example
+# ggsave("oil_graph.png",width=14,height=7,dpi=250,bg="white")
+```

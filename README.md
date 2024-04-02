@@ -1,4 +1,4 @@
-# aleach
+# Energy Economics
 
 This repository recreates some of the projects and lectures by professor Andrew Leach of the University of Alberta.
 
